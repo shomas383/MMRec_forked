@@ -69,23 +69,32 @@ class Config(object):
         file_config_dict = dict()
         file_list = []
         # get dataset and model files
-        cur_dir = os.getcwd()
-        cur_dir = os.path.join(cur_dir, 'configs')
-        file_list.append(os.path.join(cur_dir, "overall.yaml"))
-        file_list.append(os.path.join(cur_dir, "dataset", "{}.yaml".format(config_dict['dataset'])))
-        file_list.append(os.path.join(cur_dir, "model", "{}.yaml".format(config_dict['model'])))
+        # Base directory for configs
+        base_dir = "/content/MMRec/src/configs"
+        # Generate file list
+        file_list.append(os.path.join(base_dir, "overall.yaml"))
+        file_list.append(os.path.join(base_dir, "dataset", "{}.yaml".format(config_dict['dataset'])))
+        file_list.append(os.path.join(base_dir, "model", "{}.yaml".format(config_dict['model'])))
         if mg:
-            file_list.append(os.path.join(cur_dir, "mg.yaml"))
+            file_list.append(os.path.join(base_dir, "mg.yaml"))
+
+        print(f"Loading configuration files: {file_list}")  # Debugging log
 
         hyper_parameters = []
         for file in file_list:
             if os.path.isfile(file):
                 with open(file, 'r', encoding='utf-8') as f:
                     fdata = yaml.load(f.read(), Loader=self._build_yaml_loader())
+                    # Debug: Log the content of the current file
+                    print(f"Loaded content from {file}: {fdata}")
                     if fdata.get('hyper_parameters'):
                         hyper_parameters.extend(fdata['hyper_parameters'])
                     file_config_dict.update(fdata)
-                    
+            else:
+            # Debug: Log missing file
+              print(f"Configuration file not found: {file}")
+        # Debug: Final merged config before returning
+        print(f"Final merged config from files: {file_config_dict}")            
         file_config_dict['hyper_parameters'] = hyper_parameters
         return file_config_dict
 

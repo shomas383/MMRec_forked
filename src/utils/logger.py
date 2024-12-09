@@ -19,15 +19,22 @@ def init_logger(config):
     Args:
         config (Config): An instance object of Config, used to record parameter information.
     """
-    LOGROOT = './log/'
-    dir_name = os.path.dirname(LOGROOT)
-    if not os.path.exists(dir_name):
-        os.makedirs(dir_name)
+    # Absolute path for log directory (adjusted for Colab environment)
+    LOGROOT = '/content/log/'
+    os.makedirs(LOGROOT, exist_ok=True)  # Create the log directory if it doesn't exist
 
-    logfilename = '{}-{}-{}.log'.format(config['model'], config['dataset'], get_local_time())
-
+    # Construct the log filename
+    logfilename = '{}-{}-{}.log'.format(
+        config.final_config_dict.get('model', 'unknown'),
+        config.final_config_dict.get('dataset', 'unknown'),
+        get_local_time()
+    )
     logfilepath = os.path.join(LOGROOT, logfilename)
 
+    # Debugging: Print the log file path
+    print(f"Log file will be saved at: {logfilepath}")
+
+    # Define file and stream formatters
     filefmt = "%(asctime)-15s %(levelname)s %(message)s"
     filedatefmt = "%a %d %b %Y %H:%M:%S"
     fileformatter = logging.Formatter(filefmt, filedatefmt)
@@ -35,31 +42,37 @@ def init_logger(config):
     sfmt = u"%(asctime)-15s %(levelname)s %(message)s"
     sdatefmt = "%d %b %H:%M"
     sformatter = logging.Formatter(sfmt, sdatefmt)
-    if config['state'] is None or config['state'].lower() == 'info':
-        level = logging.INFO
-    elif config['state'].lower() == 'debug':
-        level = logging.DEBUG
-    elif config['state'].lower() == 'error':
-        level = logging.ERROR
-    elif config['state'].lower() == 'warning':
-        level = logging.WARNING
-    elif config['state'].lower() == 'critical':
-        level = logging.CRITICAL
-    else:
-        level = logging.INFO
-    # comment following 3 lines and handlers = [sh, fh] to cancel file dump.
-    fh = logging.FileHandler(logfilepath, 'w', 'utf-8')
-    fh.setLevel(level)
-    fh.setFormatter(fileformatter)
 
+    # Determine logging level based on 'state'
+    state = config.final_config_dict.get('state', 'info').lower()
+    level = {
+        'info': logging.INFO,
+        'debug': logging.DEBUG,
+        'error': logging.ERROR,
+        'warning': logging.WARNING,
+        'critical': logging.CRITICAL
+    }.get(state, logging.INFO)  # Default to INFO
+
+    # File handler
+    try:
+        fh = logging.FileHandler(logfilepath, 'w', 'utf-8')
+        fh.setLevel(level)
+        fh.setFormatter(fileformatter)
+    except Exception as e:
+        print(f"Error initializing FileHandler: {e}")
+        fh = None
+
+    # Stream handler
     sh = logging.StreamHandler()
     sh.setLevel(level)
     sh.setFormatter(sformatter)
 
+    # Configure logging
+    handlers = [sh]
+    if fh:  # Add FileHandler only if initialized successfully
+        handlers.append(fh)
+
     logging.basicConfig(
         level=level,
-        #handlers=[sh]
-        handlers = [sh, fh]
+        handlers=handlers
     )
-
-

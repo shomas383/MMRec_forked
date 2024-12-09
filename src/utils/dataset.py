@@ -25,7 +25,8 @@ class RecDataset(object):
 
         # data path & files
         self.dataset_name = config['dataset']
-        self.dataset_path = os.path.abspath(config['data_path']+self.dataset_name)
+        #self.dataset_path = os.path.abspath(config['data_path']+self.dataset_name)
+        self.dataset_path = os.path.abspath(config['data_path'])
 
         # dataframe
         self.uid_field = self.config['USER_ID_FIELD']

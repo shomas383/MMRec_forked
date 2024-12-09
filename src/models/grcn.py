@@ -167,7 +167,7 @@ class CGCN(torch.nn.Module):
 
 
 class GRCN(GeneralRecommender):
-    def __init__(self,  config, dataset):
+    def __init__(self,  config, dataset=None, edge_index=None):
         super(GRCN, self).__init__(config, dataset)
         self.num_user = self.n_users
         self.num_item = self.n_items
@@ -187,10 +187,16 @@ class GRCN(GeneralRecommender):
         self.weight = torch.tensor([[1.0], [-1.0]]).to(self.device)
         self.reg_weight = config['reg_weight']
         self.dropout = 0
-        # packing interaction in training into edge_index
-        train_interactions = dataset.inter_matrix(form='coo').astype(np.float32)
-        edge_index = torch.tensor(self.pack_edge_index(train_interactions), dtype=torch.long)
-        self.edge_index = edge_index.t().contiguous().to(self.device)
+
+        # Ensure edge_index is defined
+        if edge_index is not None:
+            self.edge_index = edge_index.to(self.device)
+        elif dataset is not None:
+            train_interactions = dataset.inter_matrix(form='coo').astype(np.float32)
+            edge_index = torch.tensor(self.pack_edge_index(train_interactions), dtype=torch.long)
+            self.edge_index = edge_index.t().contiguous().to(self.device)
+        else:
+            raise ValueError("Both `dataset` and `edge_index` cannot be None.")
         #self.edge_index = torch.cat((self.edge_index, self.edge_index[[1, 0]]), dim=1)
         self.num_modal = 0
         self.id_gcn = EGCN(num_user, num_item, dim_x, self.aggr_mode, has_act, has_norm)
@@ -331,13 +337,29 @@ class GRCN(GeneralRecommender):
         #print('loss',loss + reg_loss)
 
         return loss + reg_loss
-        
     def full_sort_predict(self, interaction):
-        user_tensor = self.result[:self.n_users]
-        item_tensor = self.result[self.n_users:]
+      user_tensor = self.result[:self.n_users]
+      item_tensor = self.result[self.n_users:]
 
-        temp_user_tensor = user_tensor[interaction[0], :]
-        score_matrix = torch.matmul(temp_user_tensor, item_tensor.t())
-        return score_matrix
+      # Extract user embeddings for the batch
+      temp_user_tensor = user_tensor[interaction[0], :]
+      
+      # Compute scores for all items
+      score_matrix = torch.matmul(temp_user_tensor, item_tensor.t())
+      return score_matrix
+      
+      # # Get top-k item indices for each user
+      # top_k_scores, top_k_indices = torch.topk(score_matrix, k=top_k, dim=1)
+      
+      # return top_k_scores, top_k_indices  
+
+
+    # def full_sort_predict(self, interaction):
+    #     user_tensor = self.result[:self.n_users]
+    #     item_tensor = self.result[self.n_users:]
+
+    #     temp_user_tensor = user_tensor[interaction[0], :]
+    #     score_matrix = torch.matmul(temp_user_tensor, item_tensor.t())
+    #     return score_matrix
 
 
